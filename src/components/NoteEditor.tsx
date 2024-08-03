@@ -11,6 +11,10 @@ interface NoteEditorProps {
 	updateNoteContent: (content: string) => void;
 }
 
+const basicSetupOptions = {
+	lineNumbers: false,
+};
+
 export default function NoteEditor({
 	noteContent,
 	updateNoteContent,
@@ -18,13 +22,18 @@ export default function NoteEditor({
 	return (
 		<CodeMirror
 			value={noteContent}
+			className="h-screen w-screen"
+			basicSetup={basicSetupOptions}
 			extensions={[
 				markdown({
 					base: markdownLanguage,
 					codeLanguages: languages,
 				}),
 			]}
-			onChange={updateNoteContent}
+			onChange={(val, viewChange) => {
+				console.log(viewChange);
+				updateNoteContent(val);
+			}}
 		/>
 	);
 }
