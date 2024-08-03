@@ -2,11 +2,12 @@ import React, { useState } from "react";
 import Sidebar from "./components/Sidebar";
 import NoteList from "./components/NoteList";
 import NoteEditor from "./components/NoteEditor";
+import { v4 as uuid } from "uuid";
 
 interface Note {
 	id: string;
 	title: string;
-	content: string[];
+	content: string;
 }
 
 export default function App(): React.JSX.Element {
@@ -17,9 +18,9 @@ export default function App(): React.JSX.Element {
 
 	const createNewNote = () => {
 		const newNote: Note = {
-			id: Date.now().toString(),
+			id: uuid(),
 			title: `Untitled Note ${notes.length + 1}`,
-			content: [""],
+			content: "Hello world!",
 		};
 		setNotes([...notes, newNote]);
 		setCurrentNoteId(newNote.id);
@@ -29,18 +30,13 @@ export default function App(): React.JSX.Element {
 		setCurrentNoteId(id);
 	};
 
-	const updateNoteContent = (
-		lineIndex: number,
-		content: string
-	) => {
+	const updateNoteContent = (content: string) => {
 		setNotes(
 			notes.map((note) =>
 				note.id === currentNoteId
 					? {
 							...note,
-							content: note.content.map((line, index) =>
-								index === lineIndex ? content : line
-							),
+							content: content,
 					  }
 					: note
 			)

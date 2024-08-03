@@ -1,11 +1,14 @@
 import React from "react";
+import CodeMirror from "@uiw/react-codemirror";
+import {
+	markdown,
+	markdownLanguage,
+} from "@codemirror/lang-markdown";
+import { languages } from "@codemirror/language-data";
 
 interface NoteEditorProps {
-	noteContent: string[];
-	updateNoteContent: (
-		lineIndex: number,
-		content: string
-	) => void;
+	noteContent: string;
+	updateNoteContent: (content: string) => void;
 }
 
 export default function NoteEditor({
@@ -13,22 +16,15 @@ export default function NoteEditor({
 	updateNoteContent,
 }: NoteEditorProps): React.JSX.Element {
 	return (
-		<div className="flex-1 h-screen p-4">
-			{noteContent.map((line, index) => (
-				<div
-					key={index}
-					contentEditable
-					className="border-b p-2"
-					onInput={(e) =>
-						updateNoteContent(
-							index,
-							(e.target as HTMLDivElement).innerText
-						)
-					}
-				>
-					{line}
-				</div>
-			))}
-		</div>
+		<CodeMirror
+			value={noteContent}
+			extensions={[
+				markdown({
+					base: markdownLanguage,
+					codeLanguages: languages,
+				}),
+			]}
+			onChange={updateNoteContent}
+		/>
 	);
 }
