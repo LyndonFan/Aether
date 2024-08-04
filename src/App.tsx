@@ -60,24 +60,51 @@ export default function App(): React.JSX.Element {
 		setCurrentNoteId(id);
 	};
 
-	const updateNoteContent = (content: string) => {
-		setNotes(
-			new Map(
-				[...notes].map(([key, note]) =>
-					key === currentNoteId
-						? [key, { ...note, content: content }]
-						: [key, note]
-				)
-			)
+	const saveNote = (note: Note) => {
+		localStorage.setItem(
+			NOTE_FIELD_PREFIX + note.id,
+			JSON.stringify(note)
 		);
-		if (
-			currentNoteId !== null &&
-			notes.has(currentNoteId)
-		) {
-			localStorage.setItem(
-				NOTE_FIELD_PREFIX + currentNoteId,
-				JSON.stringify(notes.get(currentNoteId)!)
+	};
+
+	const updateTitle = (title: string) => {
+		if (!currentNote) {
+			return;
+		}
+		setNotes((prevMap) => {
+			return new Map(
+				prevMap.set(currentNoteId!, {
+					...currentNote,
+					title: title,
+				})
 			);
+		});
+		saveNote({ ...currentNote!, title: title });
+	};
+
+	const updateNoteContent = (content: string) => {
+		if (!currentNote) {
+			let newNote = {
+				id: currentNoteId!,
+				title: content.split("\n", 1)[0],
+				content: content,
+			};
+			setNotes((prevMap) => {
+				return new Map(
+					prevMap.set(currentNoteId!, newNote)
+				);
+			});
+			saveNote(newNote);
+		} else {
+			setNotes((prevMap) => {
+				return new Map(
+					prevMap.set(currentNoteId!, {
+						...currentNote,
+						content: content,
+					})
+				);
+			});
+			saveNote({ ...currentNote!, content: content });
 		}
 	};
 
@@ -85,7 +112,9 @@ export default function App(): React.JSX.Element {
 		? notes.get(currentNoteId)
 		: undefined;
 
-	const noteList = [...notes.values()];
+	const noteList = [...notes].map(([key, note]) => {
+		return { id: key, title: note.title };
+	});
 
 	return (
 		<div className="flex">
@@ -95,6 +124,7 @@ export default function App(): React.JSX.Element {
 				<NoteEditor
 					noteContent={currentNote.content}
 					updateNoteContent={updateNoteContent}
+					updateTitle={updateTitle}
 				/>
 			)}
 		</div>

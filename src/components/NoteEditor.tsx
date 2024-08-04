@@ -9,6 +9,7 @@ import { languages } from "@codemirror/language-data";
 interface NoteEditorProps {
 	noteContent: string;
 	updateNoteContent: (content: string) => void;
+	updateTitle: (title: string) => void;
 }
 
 const basicSetupOptions = {
@@ -18,6 +19,7 @@ const basicSetupOptions = {
 export default function NoteEditor({
 	noteContent,
 	updateNoteContent,
+	updateTitle,
 }: NoteEditorProps): React.JSX.Element {
 	return (
 		<CodeMirror
@@ -31,8 +33,11 @@ export default function NoteEditor({
 				}),
 			]}
 			onChange={(val, viewChange) => {
-				console.log(viewChange);
+				const view = viewChange.view;
+				const doc = view.state.doc;
+				const firstLine = doc.line(1);
 				updateNoteContent(val);
+				updateTitle(firstLine.text);
 			}}
 		/>
 	);
