@@ -1,0 +1,8 @@
+.rendered-markdown {
+	margin-left: 5%;
+}
+
+.rendered-markdown * {
+	margin-top: 0;
+	margin-bottom: 0;
+}

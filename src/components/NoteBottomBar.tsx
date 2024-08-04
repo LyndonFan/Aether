@@ -29,12 +29,15 @@ export default function NoteBottomBar({
 		setTimeout(() => setShowCopyMessage(false), 1000);
 	};
 
+	// isView logic is intentionally reversed:
+	// if isView is true, show edit icon to let them know clicking it switches to editing
+	// if isView is false, show preview icon to let them know clicking it switches to preview
 	return (
 		<span>
 			{isView ? (
-				<PreviewIcon onClick={() => updateToView(false)} />
-			) : (
 				<EditIcon onClick={() => updateToView(true)} />
+			) : (
+				<PreviewIcon onClick={() => updateToView(false)} />
 			)}
 			<DownloadIcon onClick={downloadNote} />
 			<ContentCopyIcon onClick={handleCopyClick} />

@@ -2,6 +2,7 @@ import React from "react";
 import { useState } from "react";
 import NoteEditor from "./NoteEditor";
 import NoteBottomBar from "./NoteBottomBar";
+import NotePreview from "./NotePreview";
 
 interface NotePageProps {
 	noteContent: string;
@@ -38,12 +39,16 @@ export default function NotePage({
 	};
 
 	return (
-		<div className="h-screen flex flex-col">
+		<div className="h-screen w-full flex flex-col">
 			<div className="flex-grow h-full">
-				<NoteEditor
-					noteContent={noteContent}
-					updateNote={updateNote}
-				/>
+				{isView ? (
+					<NotePreview noteContent={noteContent} />
+				) : (
+					<NoteEditor
+						noteContent={noteContent}
+						updateNote={updateNote}
+					/>
+				)}
 			</div>
 			<div className="mt-auto">
 				<NoteBottomBar
