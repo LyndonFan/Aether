@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import NoteList from "./components/NoteList";
-import NoteEditor from "./components/NoteEditor";
 import { v4 as uuid } from "uuid";
+import NotePage from "./components/NotePage";
 
 interface Note {
 	id: string;
@@ -67,7 +67,7 @@ export default function App(): React.JSX.Element {
 		);
 	};
 
-	const updateTitle = (title: string) => {
+	const updateNote = (title: string, content: string) => {
 		if (!currentNote) {
 			return;
 		}
@@ -76,36 +76,29 @@ export default function App(): React.JSX.Element {
 				prevMap.set(currentNoteId!, {
 					...currentNote,
 					title: title,
+					content: content,
 				})
 			);
 		});
-		saveNote({ ...currentNote!, title: title });
+		saveNote({
+			...currentNote!,
+			title: title,
+			content: content,
+		});
 	};
 
-	const updateNoteContent = (content: string) => {
+	const deleteNote = () => {
 		if (!currentNote) {
-			let newNote = {
-				id: currentNoteId!,
-				title: content.split("\n", 1)[0],
-				content: content,
-			};
-			setNotes((prevMap) => {
-				return new Map(
-					prevMap.set(currentNoteId!, newNote)
-				);
-			});
-			saveNote(newNote);
-		} else {
-			setNotes((prevMap) => {
-				return new Map(
-					prevMap.set(currentNoteId!, {
-						...currentNote,
-						content: content,
-					})
-				);
-			});
-			saveNote({ ...currentNote!, content: content });
+			return;
 		}
+		setNotes((prevMap) => {
+			prevMap.delete(currentNoteId!);
+			return new Map(prevMap);
+		});
+		localStorage.removeItem(
+			NOTE_FIELD_PREFIX + currentNoteId!
+		);
+		setCurrentNoteId(null);
 	};
 
 	const currentNote = currentNoteId
@@ -121,10 +114,10 @@ export default function App(): React.JSX.Element {
 			<Sidebar createNewNote={createNewNote} />
 			<NoteList notes={noteList} selectNote={selectNote} />
 			{currentNote && (
-				<NoteEditor
+				<NotePage
 					noteContent={currentNote.content}
-					updateNoteContent={updateNoteContent}
-					updateTitle={updateTitle}
+					updateNote={updateNote}
+					deleteNote={deleteNote}
 				/>
 			)}
 		</div>

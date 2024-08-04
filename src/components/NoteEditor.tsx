@@ -6,10 +6,9 @@ import {
 } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 
-interface NoteEditorProps {
+export interface NoteEditorProps {
 	noteContent: string;
-	updateNoteContent: (content: string) => void;
-	updateTitle: (title: string) => void;
+	updateNote: (title: string, content: string) => void;
 }
 
 const basicSetupOptions = {
@@ -18,13 +17,12 @@ const basicSetupOptions = {
 
 export default function NoteEditor({
 	noteContent,
-	updateNoteContent,
-	updateTitle,
+	updateNote,
 }: NoteEditorProps): React.JSX.Element {
 	return (
 		<CodeMirror
 			value={noteContent}
-			className="h-screen w-screen"
+			className="h-full w-full"
 			basicSetup={basicSetupOptions}
 			extensions={[
 				markdown({
@@ -36,8 +34,7 @@ export default function NoteEditor({
 				const view = viewChange.view;
 				const doc = view.state.doc;
 				const firstLine = doc.line(1);
-				updateNoteContent(val);
-				updateTitle(firstLine.text);
+				updateNote(firstLine.text, val);
 			}}
 		/>
 	);
