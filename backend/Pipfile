@@ -6,8 +6,10 @@ name = "pypi"
 [packages]
 torch = "==2.2.*"
 transformers = "==4.43.*"
-bitsandbytes = "==0.42.*"
 accelerate = "==0.33.*"
+tokenizers = "*"
+sentencepiece = "==0.2"
+protobuf = "*"
 
 [dev-packages]
 ipython = "==8.26.*"
