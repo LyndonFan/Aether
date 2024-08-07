@@ -42,12 +42,16 @@ export default function App(): React.JSX.Element {
 		}
 	}, []);
 
-	const createNewNote = () => {
+	const createNewNote = (
+		initialNoteContent: string | null
+	) => {
 		const newNote: Note = {
 			id: uuid(),
-			title: "New Note",
-			content: "Hello world!",
+			title: "",
+			content:
+				initialNoteContent || "# New Note\n\nHello world!",
 		};
+		newNote.title = newNote.content.split("\n", 1)[0];
 		setNotes(new Map([...notes, [newNote.id, newNote]]));
 		localStorage.setItem(
 			NOTE_FIELD_PREFIX + newNote.id,
