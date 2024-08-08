@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ChangeEvent, useState } from "react";
 
 interface SidebarProps {
 	createNewNotes: (
@@ -12,40 +12,58 @@ export default function Sidebar({
 	const BUTTON_STYLING_CLASS_NAME =
 		"bg-blue-500 text-white w-full py-2 rounded";
 
+	const DISABLED_BUTTON_STYLING_CLASS_NAME =
+		"bg-gray-500 text-white w-full py-2 rounded";
+
 	const newNoteFromClipboard = () => {
 		navigator.clipboard
 			.readText()
 			.then((content) => createNewNotes([content]));
 	};
 
-	const onReceiveFileInput = (event: EventTarget) => {
+	const [uploadedFileContents, setUploadedFileContents] =
+		useState<Map<string, string>>(new Map());
+
+	const onReceiveFileInput = async (
+		event: ChangeEvent<HTMLInputElement>
+	) => {
 		console.log(event);
+		const files = event.target.files
+			? [...event.target.files]
+			: [];
+		const newContents: Map<string, string> = new Map();
+		const promises = files.map((file) => {
+			return new Promise((resolve, reject) => {
+				let reader = new FileReader();
+				reader.onload = () => {
+					newContents.set(
+						file.name,
+						reader.result as string
+					);
+					resolve(null);
+				};
+				reader.onerror = null;
+				reader.readAsText(file);
+			});
+		});
+		await Promise.all(promises);
+		setUploadedFileContents(
+			new Map([
+				...uploadedFileContents.entries(),
+				...newContents.entries(),
+			])
+		);
 	};
 
-	// input.addEventListener("change", (e) => {
-	// 	const files = Array.from(e.target.files || []);
-	// 	files.forEach((file) => {
-	// 		const reader = new FileReader();
-	// 		reader.onload = (e) => {
-	// 			const content = e.target?.result as string;
-	// 			const title = file.name.replace(
-	// 				/\.md$/i,
-	// 				""
-	// 			);
-	// 			fetch("/api/notes", {
-	// 				method: "POST",
-	// 				headers: {
-	// 					"Content-Type": "application/json",
-	// 				},
-	// 				body: JSON.stringify({
-	// 					title,
-	// 					content,
-	// 				}),
-	// 			});
-	// 		};
-	// 		reader.readAsText(file);
-	// 	});
-	// });
+	const onSubmit = (event: React.FormEvent) => {
+		event.preventDefault();
+		createNewNotes([...uploadedFileContents.values()]);
+		setUploadedFileContents(new Map());
+		let fileInputElement =
+			document.getElementById("file-uploads")!;
+		(fileInputElement as HTMLInputElement).value = "";
+	};
+
 	return (
 		<div className="max-w-1/5 h-screen bg-gray-200 p-4 space-y-4">
 			<button
@@ -60,10 +78,31 @@ export default function Sidebar({
 			>
 				Import from Clipboard
 			</button>
-			<button className={BUTTON_STYLING_CLASS_NAME}>
-				Import Notes from Files
-				<input type="file" accept=".md,.txt" multiple />
-			</button>
+			<form className="space-y-4">
+				<input
+					className={
+						uploadedFileContents.size === 0
+							? DISABLED_BUTTON_STYLING_CLASS_NAME
+							: BUTTON_STYLING_CLASS_NAME
+					}
+					type="submit"
+					disabled={uploadedFileContents.size === 0}
+					value={`Import Notes from ${
+						uploadedFileContents.size
+					} File${
+						uploadedFileContents.size === 1 ? "" : "s"
+					}`}
+					onClick={onSubmit}
+				/>
+				<input
+					id="file-uploads"
+					type="file"
+					accept=".md,.txt"
+					multiple
+					className={BUTTON_STYLING_CLASS_NAME}
+					onChange={onReceiveFileInput}
+				/>
+			</form>
 		</div>
 	);
 }
