@@ -22,7 +22,7 @@ export default function NoteEditor({
 	return (
 		<CodeMirror
 			value={noteContent}
-			className="h-full w-full"
+			className="h-full w-full overflow-y-auto"
 			basicSetup={basicSetupOptions}
 			extensions={[
 				markdown({

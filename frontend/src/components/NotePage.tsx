@@ -39,7 +39,7 @@ export default function NotePage({
 	};
 
 	return (
-		<div className="h-screen w-full flex flex-col">
+		<div className="h-screen w-full flex flex-col max-w-3/4">
 			<div className="flex-grow h-full">
 				{isView ? (
 					<NotePreview noteContent={noteContent} />

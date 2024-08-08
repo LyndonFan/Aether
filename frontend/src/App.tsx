@@ -42,18 +42,29 @@ export default function App(): React.JSX.Element {
 		}
 	}, []);
 
-	const createNewNote = () => {
-		const newNote: Note = {
-			id: uuid(),
-			title: "New Note",
-			content: "Hello world!",
-		};
-		setNotes(new Map([...notes, [newNote.id, newNote]]));
-		localStorage.setItem(
-			NOTE_FIELD_PREFIX + newNote.id,
-			JSON.stringify(newNote)
+	const createNewNotes = (
+		initialNoteContents: (string | null)[]
+	) => {
+		const newNotes: Map<string, Note> = new Map();
+		for (const content of initialNoteContents.values()) {
+			const newNote: Note = {
+				id: uuid(),
+				title: "",
+				content: content || "# New Note\n\nHello world!",
+			};
+			newNote.title = newNote.content.split("\n", 1)[0];
+			localStorage.setItem(
+				NOTE_FIELD_PREFIX + newNote.id,
+				JSON.stringify(newNote)
+			);
+			newNotes.set(newNote.id, newNote);
+		}
+		setNotes(
+			new Map([...notes.entries(), ...newNotes.entries()])
 		);
-		setCurrentNoteId(newNote.id);
+		if (newNotes.size === 1) {
+			setCurrentNoteId(newNotes.keys().next().value);
+		}
 	};
 
 	const selectNote = (id: string) => {
@@ -111,7 +122,7 @@ export default function App(): React.JSX.Element {
 
 	return (
 		<div className="flex">
-			<Sidebar createNewNote={createNewNote} />
+			<Sidebar createNewNotes={createNewNotes} />
 			<NoteList notes={noteList} selectNote={selectNote} />
 			{currentNote && (
 				<NotePage
