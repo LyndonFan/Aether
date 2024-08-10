@@ -1,10 +1,11 @@
-import re
 import argparse
 import logging
+import re
 from datetime import datetime, timezone
 
+import torch
 from dotenv import load_dotenv
-from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
 
 load_dotenv("../.env.local")
 
@@ -43,7 +44,12 @@ def summarise_with_tokenizer(inp: str, model_name: str) -> str:
 
 
 def generate_text(inp: str, model: str) -> str:
-    generator = pipeline("text-generation", model=model)
+    generator = pipeline(
+        "text-generation",
+        model=model,
+        model_kwargs={"torch_dtype": torch.bfloat16},
+        device_map="auto",
+    )
     res = generator(inp, max_new_tokens=len(inp) // 2)
     return res[0]["generated_text"]
 
@@ -77,7 +83,7 @@ parser.add_argument(
     nargs="*",
     help="List of models to run",
     default=[
-        "google/gemma-2-2b",
+        "meta-llama/Meta-Llama-3-8B",
     ],
 )
 parser.add_argument(
@@ -111,7 +117,7 @@ if __name__ == "__main__":
                 summary = summarise(inp, model)
             logging.info(summary)
 
-    prompt_prefix = "Summarize the text below. Only output the summary.\n---\n"
+    prompt_prefix = "Summarize the text below, which may be in markdown. Only output the summary.\n---\n"
     if args.text_gen_models:
         logging.info("Running text generation models with the below prompt prefix:")
         logging.info(prompt_prefix)
