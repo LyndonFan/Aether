@@ -1,8 +1,8 @@
 from typing import TypedDict
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
-from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy import Column, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -77,25 +77,19 @@ def delete_note(note_id: str, db: Session = Depends(get_db)):
     return JSONResponse(content={"message": "Note deleted successfully"})
 
 
-
-class NoteUpdate(BaseModel):
-    title: str
-    content: str
-
-
 @app.websocket("/notes/{note_id}")
-async def update_note(websocket: WebSocket, note_id: str, db: Session = Depends(get_db)):
+async def update_note(
+    websocket: WebSocket, note_id: str, db: Session = Depends(get_db)
+):
     note = db.query(Note).filter(Note.note_id == note_id).first()
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
-
-    await manager.connect(websocket)
+    await websocket.accept()
     try:
         while True:
             data = await websocket.receive_json()
             note.title = data["title"]
             note.content = data["content"]
             db.commit()
-            await manager.send_personal(note_id, data)
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        pass
