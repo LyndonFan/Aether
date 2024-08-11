@@ -1,6 +1,8 @@
-## Personal Added
+## Manually Added
 
 backend/inputs/
+**/*.db
+**/*.json
 
 ## Default Ignores
 
