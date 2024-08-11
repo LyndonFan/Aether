@@ -3,7 +3,7 @@ from typing import TypedDict
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import Column, String, create_engine
+from sqlalchemy import Column, String, create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -105,5 +105,27 @@ async def update_note(
             note.title = data["title"]
             note.content = data["content"]
             db.commit()
+    except WebSocketDisconnect:
+        pass
+
+@app.websocket("/search/exact")
+async def search_exact(websocket: WebSocket, db: Session = Depends(get_db)):
+    EXACT_SEARCH_QUERY = text("""
+    WITH counts_table AS (
+        SELECT note_id, (LENGTH(content) - LENGTH(REPLACE(content, :search, ''))) / LENGTH(:search) AS count
+        FROM notes
+    )
+    SELECT notes.note_id, notes.title, counts_table.count
+    FROM notes
+    INNER JOIN counts_table ON notes.note_id = counts_table.note_id
+    WHERE counts_table.count > 0
+    ORDER BY counts_table.count DESC
+    """)
+    await websocket.accept()
+    try:
+        while True:
+            search_term = await websocket.receive_text()
+            results = db.execute(EXACT_SEARCH_QUERY, {"search": search_term}).all()
+            await websocket.send_json([{"note_id": row.note_id, "title": row.title, "num_occurrences": row.count} for row in results])
     except WebSocketDisconnect:
         pass
