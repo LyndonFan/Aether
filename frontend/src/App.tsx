@@ -1,45 +1,52 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "./components/Sidebar";
 import NoteList from "./components/NoteList";
 import { v4 as uuid } from "uuid";
 import NotePage from "./components/NotePage";
 
-interface Note {
-	id: string;
+interface NoteCover {
+	note_id: string;
 	title: string;
+}
+
+interface Note extends NoteCover {
 	content: string;
 }
 
-const NOTE_FIELD_PREFIX = "notes-aether-";
+const BACKEND_HTTP_URL = "http://localhost:8000";
+const BACKEND_WEB_SOCKET_URL = "ws://localhost:8000";
 
 export default function App(): React.JSX.Element {
-	const [notes, setNotes] = useState<Map<string, Note>>(
-		new Map()
-	);
+	const [noteCovers, setNoteCovers] = useState<
+		Map<string, NoteCover>
+	>(new Map());
 	const [currentNoteId, setCurrentNoteId] = useState<
 		string | null
 	>(null);
+	const [currentNoteContent, setCurrentNoteContent] =
+		useState<string>("");
+	const socketRef = useRef<WebSocket | null>(null);
 
 	useEffect(() => {
 		const savedNotes: Map<string, Note> = new Map();
-		for (const storage_key in localStorage) {
-			if (
-				storage_key.startsWith(NOTE_FIELD_PREFIX) &&
-				localStorage.getItem(storage_key) !== null
-			) {
-				const note_key = storage_key.replace(
-					NOTE_FIELD_PREFIX,
-					""
-				);
-				savedNotes.set(
-					note_key,
-					JSON.parse(localStorage.getItem(storage_key)!)
-				);
-			}
-		}
-		if (savedNotes.size > 0) {
-			setNotes(savedNotes);
-		}
+		fetch(BACKEND_HTTP_URL + "/notes", {
+			mode: "cors",
+		})
+			.then((response) => {
+				console.log(response);
+				return response.json();
+			})
+			.then((data) => {
+				for (const noteCover of data) {
+					savedNotes.set(noteCover.note_id, noteCover);
+				}
+				if (savedNotes.size > 0) {
+					setNoteCovers(savedNotes);
+				}
+			})
+			.catch((error) => {
+				console.error(error);
+			});
 	}, []);
 
 	const createNewNotes = (
@@ -48,49 +55,84 @@ export default function App(): React.JSX.Element {
 		const newNotes: Map<string, Note> = new Map();
 		for (const content of initialNoteContents.values()) {
 			const newNote: Note = {
-				id: uuid(),
+				note_id: uuid(),
 				title: "",
 				content: content || "# New Note\n\nHello world!",
 			};
 			newNote.title = newNote.content.split("\n", 1)[0];
-			localStorage.setItem(
-				NOTE_FIELD_PREFIX + newNote.id,
-				JSON.stringify(newNote)
-			);
-			newNotes.set(newNote.id, newNote);
+			newNotes.set(newNote.note_id, newNote);
 		}
-		setNotes(
-			new Map([...notes.entries(), ...newNotes.entries()])
+		fetch(BACKEND_HTTP_URL + "/notes", {
+			mode: "cors",
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify([...newNotes.values()]),
+		});
+		setNoteCovers(
+			new Map([
+				...noteCovers.entries(),
+				...newNotes.entries(),
+			])
 		);
 		if (newNotes.size === 1) {
 			setCurrentNoteId(newNotes.keys().next().value);
 		}
 	};
 
-	const selectNote = (id: string) => {
-		setCurrentNoteId(id);
+	const selectNote = (note_id: string | null) => {
+		setCurrentNoteId(note_id);
+		socketRef.current?.close();
+		if (note_id === null) {
+			socketRef.current = null;
+			return;
+		}
+		const webSocketURL = `${BACKEND_WEB_SOCKET_URL}/notes/${note_id}`;
+		const newSocket = new WebSocket(webSocketURL);
+		socketRef.current = newSocket;
+		newSocket.onmessage = (event) => {
+			console.log(event.data);
+			const note: Note = JSON.parse(event.data);
+			setCurrentNoteContent(note.content);
+			const { content: _, ...noteCover } = note;
+			setNoteCovers((prevMap) => {
+				return new Map(
+					prevMap.set(note.note_id, noteCover)
+				);
+			});
+		};
 	};
 
-	const saveNote = (note: Note) => {
-		localStorage.setItem(
-			NOTE_FIELD_PREFIX + note.id,
-			JSON.stringify(note)
-		);
+	const saveNote = (note: Note, flush: boolean = false) => {
+		const dataToSend = JSON.stringify({
+			title: note.title,
+			content: note.content,
+		});
+		if (!socketRef.current) {
+			socketRef.current = new WebSocket(
+				`${BACKEND_HTTP_URL}/notes/${note.note_id}`
+			);
+			socketRef.current.send(dataToSend);
+		} else {
+			socketRef.current.send(dataToSend);
+		}
 	};
 
 	const updateNote = (title: string, content: string) => {
-		if (!currentNote) {
+		if (!currentNoteId) {
 			return;
 		}
-		setNotes((prevMap) => {
-			return new Map(
-				prevMap.set(currentNoteId!, {
-					...currentNote,
-					title: title,
-					content: content,
-				})
-			);
-		});
+		if (title !== currentNote!.title) {
+			setNoteCovers((prevMap) => {
+				return new Map(
+					prevMap.set(currentNoteId!, {
+						...currentNote!,
+						title: title,
+					})
+				);
+			});
+		}
 		saveNote({
 			...currentNote!,
 			title: title,
@@ -99,34 +141,39 @@ export default function App(): React.JSX.Element {
 	};
 
 	const deleteNote = () => {
-		if (!currentNote) {
+		if (!currentNoteId) {
 			return;
 		}
-		setNotes((prevMap) => {
+		setNoteCovers((prevMap) => {
 			prevMap.delete(currentNoteId!);
 			return new Map(prevMap);
 		});
-		localStorage.removeItem(
-			NOTE_FIELD_PREFIX + currentNoteId!
-		);
-		setCurrentNoteId(null);
+		fetch(BACKEND_HTTP_URL + "/notes/" + currentNoteId!, {
+			mode: "cors",
+			method: "DELETE",
+		});
+		selectNote(null);
+		setCurrentNoteContent("");
 	};
 
-	const currentNote = currentNoteId
-		? notes.get(currentNoteId)
-		: undefined;
+	const currentNote: Note | null = currentNoteId
+		? {
+				...noteCovers.get(currentNoteId)!,
+				content: currentNoteContent,
+		  }
+		: null;
 
-	const noteList = [...notes].map(([key, note]) => {
-		return { id: key, title: note.title };
+	const noteList = [...noteCovers].map(([key, note]) => {
+		return { note_id: key, title: note.title };
 	});
 
 	return (
 		<div className="flex">
 			<Sidebar createNewNotes={createNewNotes} />
 			<NoteList notes={noteList} selectNote={selectNote} />
-			{currentNote && (
+			{currentNoteId && (
 				<NotePage
-					noteContent={currentNote.content}
+					noteContent={currentNoteContent}
 					updateNote={updateNote}
 					deleteNote={deleteNote}
 				/>
