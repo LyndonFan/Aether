@@ -13,7 +13,7 @@ export interface NoteBottomProps {
 	deleteNote: () => void;
 }
 
-export default function NoteBottomBar({
+export default function NoteUtilityBar({
 	isView,
 	updateToView,
 	copyToClipboard,
