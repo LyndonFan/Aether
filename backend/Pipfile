@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 fastapi = {version = "*", extras = ["standard"]}
 sqlalchemy = "*"
+nltk = "*"
 
 [dev-packages]
 ipython = "==8.26.*"
