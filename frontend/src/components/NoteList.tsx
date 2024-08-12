@@ -31,11 +31,10 @@ export default function NoteList({
 		return noteA.note_id.localeCompare(noteB.note_id);
 	};
 
-	const [initialNotes, _] = useState<DisplayNoteCover[]>(
-		notes
-			.sort(defaultNoteListCompare)
-			.map((note, index) => ({ ...note, rank: index }))
-	);
+	const initialNotes = notes
+		.sort(defaultNoteListCompare)
+		.map((note, index) => ({ ...note, rank: index }));
+
 	const [internalNoteList, setInternalNoteList] = useState<
 		DisplayNoteCover[]
 	>(
@@ -43,6 +42,10 @@ export default function NoteList({
 			.sort(defaultNoteListCompare)
 			.map((note, index) => ({ ...note, rank: index }))
 	);
+
+	useEffect(() => {
+		setInternalNoteList(initialNotes);
+	}, [notes]);
 
 	useEffect(() => {
 		const exactSearchSocket = new WebSocket(
