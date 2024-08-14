@@ -1,7 +1,7 @@
 import React from "react";
 import { useState } from "react";
 import NoteEditor from "./NoteEditor";
-import NoteBottomBar from "./NoteBottomBar";
+import NoteUtilityBar from "./NoteUtilityBar";
 import NotePreview from "./NotePreview";
 
 interface NotePageProps {
@@ -40,6 +40,15 @@ export default function NotePage({
 
 	return (
 		<div className="h-screen w-full flex flex-col max-w-3/4">
+			<div className="mt-auto h-8">
+				<NoteUtilityBar
+					isView={isView}
+					updateToView={setIsView}
+					copyToClipboard={copyToClipboard}
+					downloadNote={downloadNote}
+					deleteNote={deleteNoteHandler}
+				/>
+			</div>
 			<div className="flex-grow h-full">
 				{isView ? (
 					<NotePreview noteContent={noteContent} />
@@ -49,15 +58,6 @@ export default function NotePage({
 						updateNote={updateNote}
 					/>
 				)}
-			</div>
-			<div className="mt-auto">
-				<NoteBottomBar
-					isView={isView}
-					updateToView={setIsView}
-					copyToClipboard={copyToClipboard}
-					downloadNote={downloadNote}
-					deleteNote={deleteNoteHandler}
-				/>
 			</div>
 		</div>
 	);

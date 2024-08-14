@@ -25,7 +25,9 @@ export default function App(): React.JSX.Element {
 	>(null);
 	const [currentNoteContent, setCurrentNoteContent] =
 		useState<string>("");
-	const socketRef = useRef<WebSocket | null>(null);
+	const noteUpdateSocketRef = useRef<WebSocket | null>(
+		null
+	);
 
 	useEffect(() => {
 		const savedNotes: Map<string, Note> = new Map();
@@ -83,14 +85,14 @@ export default function App(): React.JSX.Element {
 
 	const selectNote = (note_id: string | null) => {
 		setCurrentNoteId(note_id);
-		socketRef.current?.close();
+		noteUpdateSocketRef.current?.close();
 		if (note_id === null) {
-			socketRef.current = null;
+			noteUpdateSocketRef.current = null;
 			return;
 		}
 		const webSocketURL = `${BACKEND_WEB_SOCKET_URL}/notes/${note_id}`;
 		const newSocket = new WebSocket(webSocketURL);
-		socketRef.current = newSocket;
+		noteUpdateSocketRef.current = newSocket;
 		newSocket.onmessage = (event) => {
 			console.log(event.data);
 			const note: Note = JSON.parse(event.data);
@@ -109,13 +111,13 @@ export default function App(): React.JSX.Element {
 			title: note.title,
 			content: note.content,
 		});
-		if (!socketRef.current) {
-			socketRef.current = new WebSocket(
+		if (!noteUpdateSocketRef.current) {
+			noteUpdateSocketRef.current = new WebSocket(
 				`${BACKEND_HTTP_URL}/notes/${note.note_id}`
 			);
-			socketRef.current.send(dataToSend);
+			noteUpdateSocketRef.current.send(dataToSend);
 		} else {
-			socketRef.current.send(dataToSend);
+			noteUpdateSocketRef.current.send(dataToSend);
 		}
 	};
 

@@ -3,6 +3,7 @@
 backend/inputs/
 **/*.db
 **/*.json
+backend/nltk_data/
 
 ## Default Ignores
 
