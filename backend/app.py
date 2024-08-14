@@ -1,4 +1,5 @@
 from typing import TypedDict
+import re
 
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
@@ -129,3 +130,19 @@ async def search_exact(websocket: WebSocket, db: Session = Depends(get_db)):
             await websocket.send_json([{"note_id": row.note_id, "title": row.title, "num_occurrences": row.count} for row in results])
     except WebSocketDisconnect:
         pass
+
+@app.websocket("/search/regex")
+async def search_regex(websocket: WebSocket, db: Session = Depends(get_db)):
+    REGEX_SEARCH_QUERY = text("SELECT * FROM notes WHERE content REGEXP :search")
+    await websocket.accept()
+    try:
+        while True:
+            search_term = await websocket.receive_text()
+            results = db.execute(REGEX_SEARCH_QUERY, {"search": search_term}).all()
+            pattern = re.compile(search_term)
+            results = [{"note_id": row.note_id, "title": row.title, "num_occurrences": len(pattern.findall(row.content))} for row in results]
+            await websocket.send_json(results)
+    except WebSocketDisconnect:
+        pass
+
+# @app.websocket("/search/semantic")
