@@ -1,12 +1,14 @@
 from typing import TypedDict
 import re
-
+import json
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import Column, String, create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker
+
+from .vector_database import collection
 
 app = FastAPI()
 
@@ -78,6 +80,11 @@ def create_note(notes: list[dict[str, str]], db: Session = Depends(get_db)):
     ]
     db.add_all(new_notes)
     db.commit()
+    collection.add(
+        ids=[note["note_id"] for note in notes],
+        documents=[note["content"] for note in notes],
+        metadatas=[{"title": note["title"]} for note in notes],
+    )
     return [{"note_id": note.note_id, "title": note.title} for note in new_notes]
 
 
@@ -88,6 +95,7 @@ def delete_note(note_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Note not found")
     db.delete(note)
     db.commit()
+    collection.delete(ids=[note_id])
     return JSONResponse(content={"message": "Note deleted successfully"})
 
 
@@ -99,50 +107,98 @@ async def update_note(
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
     await websocket.accept()
-    await websocket.send_json({"note_id": note.note_id, "title": note.title, "content": note.content})
+    await websocket.send_json(
+        {"note_id": note.note_id, "title": note.title, "content": note.content}
+    )
     try:
         while True:
             data = await websocket.receive_json()
             note.title = data["title"]
             note.content = data["content"]
             db.commit()
+            collection.update(
+                ids=[note_id],
+                documents=[note.content],
+                metadatas=[{"title": note.title}],
+            )
     except WebSocketDisconnect:
         pass
 
-@app.websocket("/search/exact")
-async def search_exact(websocket: WebSocket, db: Session = Depends(get_db)):
-    EXACT_SEARCH_QUERY = text("""
-    WITH counts_table AS (
-        SELECT note_id, (LENGTH(content) - LENGTH(REPLACE(content, :search, ''))) / LENGTH(:search) AS count
-        FROM notes
-    )
-    SELECT notes.note_id, notes.title, counts_table.count
-    FROM notes
-    INNER JOIN counts_table ON notes.note_id = counts_table.note_id
-    WHERE counts_table.count > 0
-    ORDER BY counts_table.count DESC
-    """)
-    await websocket.accept()
-    try:
-        while True:
-            search_term = await websocket.receive_text()
-            results = db.execute(EXACT_SEARCH_QUERY, {"search": search_term}).all()
-            await websocket.send_json([{"note_id": row.note_id, "title": row.title, "num_occurrences": row.count} for row in results])
-    except WebSocketDisconnect:
-        pass
 
-@app.websocket("/search/regex")
-async def search_regex(websocket: WebSocket, db: Session = Depends(get_db)):
-    REGEX_SEARCH_QUERY = text("SELECT * FROM notes WHERE content REGEXP :search")
+@app.websocket("/search")
+async def search(websocket: WebSocket, db: Session = Depends(get_db)):
+    search_type = None
+    search_term = None
     await websocket.accept()
     try:
         while True:
-            search_term = await websocket.receive_text()
-            results = db.execute(REGEX_SEARCH_QUERY, {"search": search_term}).all()
-            pattern = re.compile(search_term)
-            results = [{"note_id": row.note_id, "title": row.title, "num_occurrences": len(pattern.findall(row.content))} for row in results]
+            data = await websocket.receive_json()
+            print(data)
+            if "search_type" in data:
+                if data["search_type"] in ["exact", "regex", "semantic"]:
+                    search_type = data["search_type"]
+                else:
+                    raise ValueError("unknown search type")
+            elif "search_term" in data:
+                search_term = data["search_term"]
+            if search_type is None:
+                raise ValueError("search type not specified")
+            if not search_type or search_term is None:
+                continue
+            if search_type == "exact":
+                results = db.execute(
+                    text("""
+                WITH counts_table AS (
+                    SELECT note_id, (LENGTH(content) - LENGTH(REPLACE(content, :search, ''))) / LENGTH(:search) AS count
+                    FROM notes
+                )
+                SELECT notes.note_id, notes.title, counts_table.count
+                FROM notes
+                INNER JOIN counts_table ON notes.note_id = counts_table.note_id
+                WHERE counts_table.count > 0
+                ORDER BY counts_table.count DESC
+                """),
+                    {"search": search_term},
+                ).all()
+                results = [
+                    {
+                        "note_id": row.note_id,
+                        "title": row.title,
+                        "num_occurrences": row.count,
+                    }
+                    for row in results
+                ]
+            elif search_type == "regex":
+                try:
+                    _ = re.compile(search_term)
+                    results = db.execute(
+                        text("SELECT * FROM notes WHERE content REGEXP :search"),
+                        {"search": search_term},
+                    ).all()
+                    pattern = re.compile(search_term)
+                    results = [
+                        {
+                            "note_id": row.note_id,
+                            "title": row.title,
+                            "num_occurrences": len(pattern.findall(row.content)),
+                        }
+                        for row in results
+                    ]
+                except re.error:
+                    print("warning: invalid regex", search_term)
+                    # and default to last known results
+            elif search_type == "semantic":
+                query_results = collection.query(
+                    query_texts=[search_term], include=["metadatas", "distances"]
+                )
+                results = [
+                    {"note_id": nid, "title": metadata["title"], "distance": dist}
+                    for nid, metadata, dist in zip(
+                        query_results["ids"][0],
+                        query_results["metadatas"][0],
+                        query_results["distances"][0],
+                    )
+                ]
             await websocket.send_json(results)
     except WebSocketDisconnect:
         pass
-
-# @app.websocket("/search/semantic")
