@@ -5,7 +5,6 @@ name = "pypi"
 
 [packages]
 fastapi = {version = "*", extras = ["standard"]}
-sqlalchemy = "*"
 chromadb = "*"
 sentence-transformers = "*"
 
