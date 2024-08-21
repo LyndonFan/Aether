@@ -3,7 +3,7 @@
 backend/inputs/
 **/*.db
 **/*.json
-backend/nltk_data/
+backend/chroma_data/
 
 ## Default Ignores
 

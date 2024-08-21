@@ -19,7 +19,50 @@ export default function NoteList({
 	selectNote,
 }: NoteListProps): React.JSX.Element {
 	const [searchTerm, setSearchTerm] = useState("");
-	const searchSocketRef = useRef<WebSocket | null>(null);
+	const [searchType, setSearchType] = useState<
+		"exact" | "regex" | "semantic"
+	>("exact");
+
+	const parseResponse = (
+		rows: {
+			note_id: string;
+			title: string;
+			num_occurrences?: number; // exactly one of num_occurrences or distance will be present in the whole array
+			distance?: number;
+		}[]
+	) => {
+		return rows.map((row) => {
+			return {
+				note_id: row.note_id,
+				title: row.title,
+				rank: row.num_occurrences
+					? -row.num_occurrences
+					: row.distance!,
+				rank_display: row.num_occurrences
+					? `${row.num_occurrences} time${
+							row.num_occurrences > 1 ? "s" : ""
+					  }`
+					: `Distance ${Number(row.distance!).toFixed(3)}`,
+			};
+		});
+	};
+
+	const webSocketURL = `${BACKEND_WEB_SOCKET_URL}/search`;
+
+	const searchSocketRef = useRef<WebSocket | null>();
+
+	useEffect(() => {
+		const socket = new WebSocket(webSocketURL);
+		socket.onmessage = (event) => {
+			const rows = JSON.parse(event.data);
+			console.log(rows);
+			setInternalNoteList(parseResponse(rows));
+		};
+		socket.onopen = () => {
+			socket.send(JSON.stringify({ search_type: "exact" }));
+		};
+		searchSocketRef.current = socket;
+	}, [webSocketURL]);
 
 	const defaultNoteListCompare = (
 		noteA: { note_id: string; title: string },
@@ -47,35 +90,6 @@ export default function NoteList({
 		setInternalNoteList(initialNotes);
 	}, [notes]);
 
-	useEffect(() => {
-		const exactSearchSocket = new WebSocket(
-			`${BACKEND_WEB_SOCKET_URL}/search/exact`
-		);
-		searchSocketRef.current = exactSearchSocket;
-		exactSearchSocket.onmessage = (event) => {
-			const rows = JSON.parse(event.data);
-			console.log(rows);
-			setInternalNoteList(
-				rows.map(
-					(row: {
-						note_id: string;
-						title: string;
-						num_occurrences: number;
-					}) => {
-						return {
-							note_id: row.note_id,
-							title: row.title,
-							rank: -row.num_occurrences,
-							rank_display: `${row.num_occurrences} time${
-								row.num_occurrences > 1 ? "s" : ""
-							}`,
-						};
-					}
-				)
-			);
-		};
-	}, []);
-
 	const onSearch = (
 		event: React.ChangeEvent<HTMLInputElement>
 	) => {
@@ -84,8 +98,21 @@ export default function NoteList({
 		if (newSearchTerm === "") {
 			setInternalNoteList(initialNotes);
 		} else {
-			searchSocketRef.current!.send(event.target.value);
+			searchSocketRef.current!.send(
+				JSON.stringify({ search_term: event.target.value })
+			);
 		}
+	};
+
+	const onChangeSearchType = (
+		event: React.ChangeEvent<HTMLSelectElement>
+	) => {
+		setSearchType(
+			event.target.value as "exact" | "regex" | "semantic"
+		);
+		searchSocketRef.current!.send(
+			JSON.stringify({ search_type: event.target.value })
+		);
 	};
 
 	const compareByRank = (
@@ -103,13 +130,25 @@ export default function NoteList({
 
 	return (
 		<div className="w-1/4 h-screen bg-gray-100 p-4">
-			<input
-				type="text"
-				placeholder="Search..."
-				className="w-full mb-4 p-2 border rounded"
-				value={searchTerm}
-				onChange={onSearch}
-			/>
+			<div className="flex items-center">
+				<input
+					type="text"
+					placeholder="Search..."
+					className="w-full mb-4 p-2 border rounded"
+					value={searchTerm}
+					onChange={onSearch}
+				/>
+				<div className="ml-2">
+					<select
+						value={searchType}
+						onChange={onChangeSearchType}
+					>
+						<option value="exact">Exact</option>
+						<option value="regex">Regex</option>
+						<option value="semantic">Semantic</option>
+					</select>
+				</div>
+			</div>
 			<div
 				className="max-h-7/8 overflow-y-auto"
 				style={{ overscrollBehavior: "contain" }}
