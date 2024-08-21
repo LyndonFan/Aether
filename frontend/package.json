@@ -19,7 +19,7 @@
     "@types/react-dom": "^18.3.0",
     "@uiw/react-codemirror": "^4.23.0",
     "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.40",
+    "postcss": "^8.4.41",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
