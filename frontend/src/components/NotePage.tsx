@@ -39,7 +39,7 @@ export default function NotePage({
 	};
 
 	return (
-		<div className="h-screen w-full flex flex-col max-w-3/4">
+		<div className="h-screen w-full flex flex-col max-w-3/5">
 			<div className="mt-auto h-8">
 				<NoteUtilityBar
 					isView={isView}

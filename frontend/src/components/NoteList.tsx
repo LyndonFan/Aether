@@ -129,7 +129,7 @@ export default function NoteList({
 	};
 
 	return (
-		<div className="w-1/4 h-screen bg-gray-100 p-4">
+		<div className="w-1/4 min-w-1/5 h-screen bg-gray-100 p-4">
 			<div className="flex items-center">
 				<input
 					type="text"
