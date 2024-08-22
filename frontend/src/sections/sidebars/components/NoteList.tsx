@@ -1,4 +1,9 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, {
+	useState,
+	useRef,
+	useEffect,
+	useMemo,
+} from "react";
 
 interface NoteListProps {
 	notes: { note_id: string; title: string }[];
@@ -64,6 +69,29 @@ export default function NoteList({
 		searchSocketRef.current = socket;
 	}, [webSocketURL]);
 
+	const handleSend = (data: string) => {
+		if (searchSocketRef.current === null) {
+			setTimeout(() => {
+				handleSend(data);
+			}, 1000);
+			return;
+		}
+		if (
+			searchSocketRef.current?.readyState === WebSocket.OPEN
+		) {
+			searchSocketRef.current.send(data);
+		} else if (
+			searchSocketRef.current?.readyState ===
+			WebSocket.CONNECTING
+		) {
+			searchSocketRef.current.onopen = () => {
+				searchSocketRef.current!.send(data);
+			};
+		} else {
+			console.error("WebSocket is not open");
+		}
+	};
+
 	const defaultNoteListCompare = (
 		noteA: { note_id: string; title: string },
 		noteB: { note_id: string; title: string }
@@ -74,9 +102,11 @@ export default function NoteList({
 		return noteA.note_id.localeCompare(noteB.note_id);
 	};
 
-	const initialNotes = notes
-		.sort(defaultNoteListCompare)
-		.map((note, index) => ({ ...note, rank: index }));
+	const initialNotes = useMemo(() => {
+		return notes
+			.sort(defaultNoteListCompare)
+			.map((note, index) => ({ ...note, rank: index }));
+	}, [notes]);
 
 	const [internalNoteList, setInternalNoteList] = useState<
 		DisplayNoteCover[]
@@ -86,10 +116,6 @@ export default function NoteList({
 			.map((note, index) => ({ ...note, rank: index }))
 	);
 
-	useEffect(() => {
-		setInternalNoteList(initialNotes);
-	}, [notes]);
-
 	const onSearch = (
 		event: React.ChangeEvent<HTMLInputElement>
 	) => {
@@ -98,7 +124,7 @@ export default function NoteList({
 		if (newSearchTerm === "") {
 			setInternalNoteList(initialNotes);
 		} else {
-			searchSocketRef.current!.send(
+			handleSend(
 				JSON.stringify({ search_term: event.target.value })
 			);
 		}
@@ -110,7 +136,7 @@ export default function NoteList({
 		setSearchType(
 			event.target.value as "exact" | "regex" | "semantic"
 		);
-		searchSocketRef.current!.send(
+		handleSend(
 			JSON.stringify({ search_type: event.target.value })
 		);
 	};
