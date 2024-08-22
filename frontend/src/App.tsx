@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import Sidebar from "./components/Sidebar";
-import NoteList from "./components/NoteList";
 import { v4 as uuid } from "uuid";
-import NotePage from "./components/NotePage";
+import NotePage from "./sections/note_page/NotePage";
+import Sidebars from "./sections/sidebars/Sidebars";
 
 interface NoteCover {
 	note_id: string;
@@ -106,7 +105,19 @@ export default function App(): React.JSX.Element {
 		};
 	};
 
-	const saveNote = (note: Note, flush: boolean = false) => {
+	const handleSend = (socket: WebSocket, data: string) => {
+		if (socket.readyState === WebSocket.OPEN) {
+			socket.send(data);
+		} else if (socket.readyState === WebSocket.CONNECTING) {
+			socket.onopen = () => {
+				socket.send(data);
+			};
+		} else {
+			console.error("WebSocket is not open");
+		}
+	};
+
+	const saveNote = (note: Note) => {
 		const dataToSend = JSON.stringify({
 			title: note.title,
 			content: note.content,
@@ -115,10 +126,8 @@ export default function App(): React.JSX.Element {
 			noteUpdateSocketRef.current = new WebSocket(
 				`${BACKEND_HTTP_URL}/notes/${note.note_id}`
 			);
-			noteUpdateSocketRef.current.send(dataToSend);
-		} else {
-			noteUpdateSocketRef.current.send(dataToSend);
 		}
+		handleSend(noteUpdateSocketRef.current, dataToSend);
 	};
 
 	const updateNote = (title: string, content: string) => {
@@ -171,8 +180,11 @@ export default function App(): React.JSX.Element {
 
 	return (
 		<div className="flex">
-			<Sidebar createNewNotes={createNewNotes} />
-			<NoteList notes={noteList} selectNote={selectNote} />
+			<Sidebars
+				createNewNotes={createNewNotes}
+				noteList={noteList}
+				selectNote={selectNote}
+			/>
 			{currentNoteId && (
 				<NotePage
 					noteContent={currentNoteContent}

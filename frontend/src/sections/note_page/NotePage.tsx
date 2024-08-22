@@ -1,8 +1,8 @@
 import React from "react";
 import { useState } from "react";
-import NoteEditor from "./NoteEditor";
-import NoteUtilityBar from "./NoteUtilityBar";
-import NotePreview from "./NotePreview";
+import NoteEditor from "./components/NoteEditor";
+import NoteUtilityBar from "./components/NoteUtilityBar";
+import NotePreview from "./components/NotePreview";
 
 interface NotePageProps {
 	noteContent: string;
@@ -39,7 +39,7 @@ export default function NotePage({
 	};
 
 	return (
-		<div className="h-screen w-full flex flex-col max-w-3/4">
+		<div className="h-screen w-full flex flex-col max-w-3/5">
 			<div className="mt-auto h-8">
 				<NoteUtilityBar
 					isView={isView}
