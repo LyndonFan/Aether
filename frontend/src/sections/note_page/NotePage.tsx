@@ -1,8 +1,8 @@
 import React from "react";
 import { useState } from "react";
-import NoteEditor from "./NoteEditor";
-import NoteUtilityBar from "./NoteUtilityBar";
-import NotePreview from "./NotePreview";
+import NoteEditor from "./components/NoteEditor";
+import NoteUtilityBar from "./components/NoteUtilityBar";
+import NotePreview from "./components/NotePreview";
 
 interface NotePageProps {
 	noteContent: string;

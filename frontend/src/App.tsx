@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import Sidebar from "./components/Sidebar";
-import NoteList from "./components/NoteList";
 import { v4 as uuid } from "uuid";
-import NotePage from "./components/NotePage";
+import NotePage from "./sections/note_page/NotePage";
+import Sidebars from "./sections/sidebars/Sidebars";
 
 interface NoteCover {
 	note_id: string;
@@ -181,8 +180,11 @@ export default function App(): React.JSX.Element {
 
 	return (
 		<div className="flex">
-			<Sidebar createNewNotes={createNewNotes} />
-			<NoteList notes={noteList} selectNote={selectNote} />
+			<Sidebars
+				createNewNotes={createNewNotes}
+				noteList={noteList}
+				selectNote={selectNote}
+			/>
 			{currentNoteId && (
 				<NotePage
 					noteContent={currentNoteContent}
