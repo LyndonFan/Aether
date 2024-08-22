@@ -1,12 +1,7 @@
-from typing import TypedDict
 import re
-import json
-from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import Column, String, create_engine, text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session, sessionmaker
 
 from .vector_database import collection
 
@@ -24,109 +19,65 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./notes.db"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
-
-
-class NoteTypedDict(TypedDict):
-    note_id: str
-    title: str
-    content: str
-
-
-class Note(Base):
-    __tablename__ = "notes"
-    note_id = Column(String, primary_key=True, index=True)
-    title = Column(String, nullable=False)
-    content = Column(String, nullable=False)
-
-
-Base.metadata.create_all(bind=engine)
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 
 @app.get("/notes", response_model=list[dict[str, str]])
-def get_all_notes(db: Session = Depends(get_db)):
-    query_results = db.query(Note.note_id, Note.title).all()
-    return [{"note_id": note_id, "title": title} for note_id, title in query_results]
+def get_all_notes():
+    query_results = collection.get(include=["metadatas"])
+    return [
+        {"note_id": note_id, "title": metadata["title"]}
+        for note_id, metadata in zip(query_results["ids"], query_results["metadatas"])
+    ]
 
 
 @app.get("/notes/{note_id}", response_model=dict[str, str])
-def get_note_by_id(note_id: str, db: Session = Depends(get_db)):
-    note = db.query(Note).filter(Note.note_id == note_id).first()
-    if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+def get_note_by_id(note_id: str):
+    note = collection.get(ids=[note_id])[0]
     return {"title": note.title, "content": note.content}
 
 
 @app.post("/notes", response_model=list[dict[str, str]])
-def create_note(notes: list[dict[str, str]], db: Session = Depends(get_db)):
-    new_notes = [
-        Note(note_id=note["note_id"], title=note["title"], content=note["content"])
-        for note in notes
-    ]
-    db.add_all(new_notes)
-    db.commit()
+def create_note(notes: list[dict[str, str]]):
     collection.add(
         ids=[note["note_id"] for note in notes],
         documents=[note["content"] for note in notes],
         metadatas=[{"title": note["title"]} for note in notes],
     )
-    return [{"note_id": note.note_id, "title": note.title} for note in new_notes]
+    return [{"note_id": note["note_id"], "title": note["title"]} for note in notes]
 
 
 @app.delete("/notes/{note_id}")
-def delete_note(note_id: str, db: Session = Depends(get_db)):
-    note = db.query(Note).filter(Note.note_id == note_id).first()
-    if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
-    db.delete(note)
-    db.commit()
+def delete_note(note_id: str):
     collection.delete(ids=[note_id])
     return JSONResponse(content={"message": "Note deleted successfully"})
 
 
 @app.websocket("/notes/{note_id}")
-async def update_note(
-    websocket: WebSocket, note_id: str, db: Session = Depends(get_db)
-):
-    note = db.query(Note).filter(Note.note_id == note_id).first()
-    if not note:
+async def update_note(websocket: WebSocket, note_id: str):
+    notes = collection.get(ids=[note_id])
+    if not notes:
         raise HTTPException(status_code=404, detail="Note not found")
     await websocket.accept()
     await websocket.send_json(
-        {"note_id": note.note_id, "title": note.title, "content": note.content}
+        {
+            "note_id": note_id,
+            "title": notes["metadatas"][0]["title"],
+            "content": notes["documents"][0],
+        }
     )
     try:
         while True:
             data = await websocket.receive_json()
-            note.title = data["title"]
-            note.content = data["content"]
-            db.commit()
             collection.update(
                 ids=[note_id],
-                documents=[note.content],
-                metadatas=[{"title": note.title}],
+                documents=[data["content"]],
+                metadatas=[{"title": data["title"]}],
             )
     except WebSocketDisconnect:
         pass
 
 
 @app.websocket("/search")
-async def search(websocket: WebSocket, db: Session = Depends(get_db)):
+async def search(websocket: WebSocket):
     search_type = None
     search_term = None
     await websocket.accept()
@@ -146,43 +97,39 @@ async def search(websocket: WebSocket, db: Session = Depends(get_db)):
             if not search_type or search_term is None:
                 continue
             if search_type == "exact":
-                results = db.execute(
-                    text("""
-                WITH counts_table AS (
-                    SELECT note_id, (LENGTH(content) - LENGTH(REPLACE(content, :search, ''))) / LENGTH(:search) AS count
-                    FROM notes
+                query_results = collection.get(
+                    where_document={"$contains": search_term}
                 )
-                SELECT notes.note_id, notes.title, counts_table.count
-                FROM notes
-                INNER JOIN counts_table ON notes.note_id = counts_table.note_id
-                WHERE counts_table.count > 0
-                ORDER BY counts_table.count DESC
-                """),
-                    {"search": search_term},
-                ).all()
                 results = [
                     {
-                        "note_id": row.note_id,
-                        "title": row.title,
-                        "num_occurrences": row.count,
+                        "note_id": note_id,
+                        "title": metadata["title"],
+                        "num_occurrences": content.count(search_term),
                     }
-                    for row in results
+                    for note_id, metadata, content in zip(
+                        query_results["ids"],
+                        query_results["metadatas"],
+                        query_results["documents"],
+                    )
                 ]
             elif search_type == "regex":
                 try:
-                    _ = re.compile(search_term)
-                    results = db.execute(
-                        text("SELECT * FROM notes WHERE content REGEXP :search"),
-                        {"search": search_term},
-                    ).all()
                     pattern = re.compile(search_term)
+                    query_results = collection.get()
+                    relevant_row_indexes = [
+                        i
+                        for i, doc in enumerate(query_results["documents"])
+                        if re.search(search_term, doc)
+                    ]
                     results = [
                         {
-                            "note_id": row.note_id,
-                            "title": row.title,
-                            "num_occurrences": len(pattern.findall(row.content)),
+                            "note_id": query_results["ids"][index],
+                            "title": query_results["metadatas"][index]["title"],
+                            "num_occurrences": len(
+                                pattern.findall(query_results["documents"][index])
+                            ),
                         }
-                        for row in results
+                        for index in relevant_row_indexes
                     ]
                 except re.error:
                     print("warning: invalid regex", search_term)
