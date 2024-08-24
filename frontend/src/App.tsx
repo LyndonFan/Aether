@@ -13,8 +13,9 @@ interface Note extends NoteCover {
 	content: string;
 }
 
-const BACKEND_HTTP_URL = "http://localhost:8000";
-const BACKEND_WEB_SOCKET_URL = "ws://localhost:8000";
+const BACKEND_HOST_PORT = process.env.DATABASE_HOST_PORT;
+const BACKEND_HTTP_URL = `http://${BACKEND_HOST_PORT}`;
+const BACKEND_WEB_SOCKET_URL = `ws://${BACKEND_HOST_PORT}`;
 
 export default function App(): React.JSX.Element {
 	const [noteCovers, setNoteCovers] = useState<
