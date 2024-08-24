@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from vector_database import collection
+from .vector_database import collection
 
 app = FastAPI()
 
