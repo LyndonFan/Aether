@@ -13,7 +13,8 @@ interface Note extends NoteCover {
 	content: string;
 }
 
-const BACKEND_HOST_PORT = process.env.DATABASE_HOST_PORT;
+const BACKEND_HOST_PORT =
+	process.env.REACT_APP_DATABASE_HOST_PORT;
 const BACKEND_HTTP_URL = `http://${BACKEND_HOST_PORT}`;
 const BACKEND_WEB_SOCKET_URL = `ws://${BACKEND_HOST_PORT}`;
 
@@ -29,6 +30,19 @@ export default function App(): React.JSX.Element {
 	const noteUpdateSocketRef = useRef<WebSocket | null>(
 		null
 	);
+
+	const handleSend = (
+		socket: WebSocket,
+		content: string
+	) => {
+		if (socket.readyState === WebSocket.OPEN) {
+			socket.send(content);
+		} else if (socket.readyState === WebSocket.CONNECTING) {
+			socket.onopen = () => {
+				socket.send(content);
+			};
+		}
+	};
 
 	useEffect(() => {
 		const savedNotes: Map<string, Note> = new Map();
@@ -116,10 +130,8 @@ export default function App(): React.JSX.Element {
 			noteUpdateSocketRef.current = new WebSocket(
 				`${BACKEND_HTTP_URL}/notes/${note.note_id}`
 			);
-			noteUpdateSocketRef.current.send(dataToSend);
-		} else {
-			noteUpdateSocketRef.current.send(dataToSend);
 		}
+		handleSend(noteUpdateSocketRef.current, dataToSend);
 	};
 
 	const updateNote = (title: string, content: string) => {
