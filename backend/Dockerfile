@@ -16,6 +16,8 @@ ARG DB_PORT
 ENV DB_PORT=$DB_PORT
 EXPOSE $DB_PORT
 
+# give it full permission in /usr/sbin for hugging face
+RUN chmod 777 /usr/sbin
 RUN chown daemon -R /app
 USER daemon
 # needed to expand "$DB_PORT"
