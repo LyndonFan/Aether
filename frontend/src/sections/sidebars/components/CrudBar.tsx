@@ -1,14 +1,14 @@
 import React, { ChangeEvent, useState } from "react";
 
-interface SidebarProps {
+interface CrudBarProps {
 	createNewNotes: (
 		initialNoteContents: (string | null)[]
 	) => void;
 }
 
-export default function Sidebar({
+export default function CrudBar({
 	createNewNotes,
-}: SidebarProps): React.JSX.Element {
+}: CrudBarProps): React.JSX.Element {
 	const BUTTON_STYLING_CLASS_NAME =
 		"bg-blue-500 text-white w-full py-2 rounded";
 
@@ -65,7 +65,7 @@ export default function Sidebar({
 	};
 
 	return (
-		<div className="max-w-1/5 h-screen bg-gray-200 p-4 space-y-4">
+		<div className="max-w-1/2 h-screen bg-gray-200 p-4 space-y-4">
 			<button
 				onClick={() => createNewNotes([null])}
 				className={BUTTON_STYLING_CLASS_NAME}
