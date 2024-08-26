@@ -96,15 +96,14 @@ async def search(websocket: WebSocket):
                 raise ValueError("search type not specified")
             if not search_type or search_term is None:
                 continue
+            query_results = collection.get()
             if search_type == "exact":
-                query_results = collection.get(
-                    where_document={"$contains": search_term}
-                )
+                # no default case-insensitive search
                 results = [
                     {
                         "note_id": note_id,
                         "title": metadata["title"],
-                        "num_occurrences": content.count(search_term),
+                        "num_occurrences": content.lower().count(search_term.lower()),
                     }
                     for note_id, metadata, content in zip(
                         query_results["ids"],
@@ -112,10 +111,10 @@ async def search(websocket: WebSocket):
                         query_results["documents"],
                     )
                 ]
+                results = [dct for dct in results if dct["num_occurrences"] > 0]
             elif search_type == "regex":
                 try:
                     pattern = re.compile(search_term)
-                    query_results = collection.get()
                     relevant_row_indexes = [
                         i
                         for i, doc in enumerate(query_results["documents"])

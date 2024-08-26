@@ -3,7 +3,7 @@
 backend/inputs/
 **/*.db
 **/*.json
-backend/chroma_data/
+backend/*chroma_data/
 
 ## Default Ignores
 
@@ -160,6 +160,7 @@ celerybeat.pid
 
 # Environments
 .env
+!frontend/.env
 .venv
 env/
 venv/

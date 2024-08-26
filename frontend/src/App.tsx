@@ -12,8 +12,10 @@ interface Note extends NoteCover {
 	content: string;
 }
 
-const BACKEND_HTTP_URL = "http://localhost:8000";
-const BACKEND_WEB_SOCKET_URL = "ws://localhost:8000";
+const BACKEND_HOST_PORT =
+	process.env.REACT_APP_DATABASE_HOST_PORT;
+const BACKEND_HTTP_URL = `http://${BACKEND_HOST_PORT}`;
+const BACKEND_WEB_SOCKET_URL = `ws://${BACKEND_HOST_PORT}`;
 
 export default function App(): React.JSX.Element {
 	const [noteCovers, setNoteCovers] = useState<
@@ -27,6 +29,19 @@ export default function App(): React.JSX.Element {
 	const noteUpdateSocketRef = useRef<WebSocket | null>(
 		null
 	);
+
+	const handleSend = (
+		socket: WebSocket,
+		content: string
+	) => {
+		if (socket.readyState === WebSocket.OPEN) {
+			socket.send(content);
+		} else if (socket.readyState === WebSocket.CONNECTING) {
+			socket.onopen = () => {
+				socket.send(content);
+			};
+		}
+	};
 
 	useEffect(() => {
 		const savedNotes: Map<string, Note> = new Map();
@@ -103,18 +118,6 @@ export default function App(): React.JSX.Element {
 				);
 			});
 		};
-	};
-
-	const handleSend = (socket: WebSocket, data: string) => {
-		if (socket.readyState === WebSocket.OPEN) {
-			socket.send(data);
-		} else if (socket.readyState === WebSocket.CONNECTING) {
-			socket.onopen = () => {
-				socket.send(data);
-			};
-		} else {
-			console.error("WebSocket is not open");
-		}
 	};
 
 	const saveNote = (note: Note) => {

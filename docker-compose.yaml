@@ -1,0 +1,19 @@
+services:
+  backend:
+    build: backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/chroma_data:/app/chroma_data
+    environment:
+      - DB_PORT=8000
+  frontend:
+    depends_on:
+      - backend
+    build:
+      context: frontend/
+      args:
+        REACT_APP_DATABASE_HOST_PORT: "localhost:8000"
+        PORT: 3000
+    ports:
+      - "3000:3000"
