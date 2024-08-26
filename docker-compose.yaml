@@ -13,7 +13,7 @@ services:
     build:
       context: frontend/
       args:
-        REACT_APP_DATABASE_HOST_PORT: "aether-backend-1:8000"
+        REACT_APP_DATABASE_HOST_PORT: "localhost:8000"
         PORT: 3000
     ports:
       - "3000:3000"
