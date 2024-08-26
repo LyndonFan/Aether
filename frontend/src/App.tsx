@@ -120,18 +120,6 @@ export default function App(): React.JSX.Element {
 		};
 	};
 
-	const handleSend = (socket: WebSocket, data: string) => {
-		if (socket.readyState === WebSocket.OPEN) {
-			socket.send(data);
-		} else if (socket.readyState === WebSocket.CONNECTING) {
-			socket.onopen = () => {
-				socket.send(data);
-			};
-		} else {
-			console.error("WebSocket is not open");
-		}
-	};
-
 	const saveNote = (note: Note) => {
 		const dataToSend = JSON.stringify({
 			title: note.title,

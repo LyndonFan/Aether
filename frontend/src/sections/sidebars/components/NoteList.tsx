@@ -10,7 +10,9 @@ interface NoteListProps {
 	selectNote: (note_id: string) => void;
 }
 
-const BACKEND_WEB_SOCKET_URL = "ws://localhost:8000";
+const BACKEND_HOST_PORT =
+	process.env.REACT_APP_DATABASE_HOST_PORT;
+const BACKEND_WEB_SOCKET_URL = `ws://${BACKEND_HOST_PORT}`;
 
 interface DisplayNoteCover {
 	note_id: string;
