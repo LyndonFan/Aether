@@ -39,8 +39,8 @@ export default function NotePage({
 	};
 
 	return (
-		<div className="h-screen max-h-screen w-full max-w-3/5 flex flex-col">
-			<div className="h-fit max-h-[10rem]">
+		<div className="h-screen max-h-screen w-3/5 max-w-3/5 flex flex-col">
+			<div className="h-2rem max-h-[2rem]">
 				<NoteUtilityBar
 					isView={isView}
 					updateToView={setIsView}
@@ -49,7 +49,7 @@ export default function NotePage({
 					deleteNote={deleteNoteHandler}
 				/>
 			</div>
-			<div className="flex-grow h-screen max-h-[calc(100vh-10rem)]">
+			<div className="flex-grow h-screen max-h-[calc(100vh-2rem)]">
 				{isView ? (
 					<NotePreview noteContent={noteContent} />
 				) : (

@@ -157,7 +157,7 @@ export default function NoteList({
 	};
 
 	return (
-		<div className="w-1/2 h-screen bg-gray-100 p-4">
+		<div className="w-1/2 max-w-1/2 h-screen bg-gray-100 p-4">
 			<div className="flex items-center">
 				<input
 					type="text"
