@@ -110,13 +110,15 @@ export default function NoteList({
 			.map((note, index) => ({ ...note, rank: index }));
 	}, [notes]);
 
-	const [internalNoteList, setInternalNoteList] = useState<
-		DisplayNoteCover[]
-	>(
-		notes
-			.sort(defaultNoteListCompare)
-			.map((note, index) => ({ ...note, rank: index }))
-	);
+	const [internalNoteList, setInternalNoteList] =
+		useState<DisplayNoteCover[]>(initialNotes);
+
+	if (
+		searchTerm === "" &&
+		internalNoteList.length !== notes.length
+	) {
+		setInternalNoteList(initialNotes);
+	}
 
 	const onSearch = (
 		event: React.ChangeEvent<HTMLInputElement>
