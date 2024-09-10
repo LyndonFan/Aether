@@ -10,7 +10,7 @@ export default function CrudBar({
 	createNewNotes,
 }: CrudBarProps): React.JSX.Element {
 	const BUTTON_STYLING_CLASS_NAME =
-		"bg-blue-500 text-white w-full py-2 rounded";
+		"bg-teal-500 text-white w-full py-2 rounded";
 
 	const DISABLED_BUTTON_STYLING_CLASS_NAME =
 		"bg-gray-500 text-white w-full py-2 rounded";
@@ -65,7 +65,7 @@ export default function CrudBar({
 	};
 
 	return (
-		<div className="max-w-1/2 h-screen bg-gray-200 p-4 space-y-4">
+		<div className="w-1/2 max-w-1/2 h-screen bg-gray-200 p-4 space-y-4">
 			<button
 				onClick={() => createNewNotes([null])}
 				className={BUTTON_STYLING_CLASS_NAME}
@@ -78,7 +78,7 @@ export default function CrudBar({
 			>
 				Import from Clipboard
 			</button>
-			<form className="space-y-4">
+			<form className="flex-col space-y-4">
 				<input
 					className={
 						uploadedFileContents.size === 0
@@ -87,22 +87,51 @@ export default function CrudBar({
 					}
 					type="submit"
 					disabled={uploadedFileContents.size === 0}
-					value={`Import Notes from ${
+					value={`Import Notes\nfrom ${
 						uploadedFileContents.size
 					} File${
 						uploadedFileContents.size === 1 ? "" : "s"
 					}`}
 					onClick={onSubmit}
 				/>
-				<input
-					id="file-uploads"
-					type="file"
-					accept=".md,.txt"
-					multiple
-					className={BUTTON_STYLING_CLASS_NAME}
-					onChange={onReceiveFileInput}
-				/>
+				<label
+					className={
+						BUTTON_STYLING_CLASS_NAME +
+						" flex justify-center"
+					}
+					htmlFor="file-uploads"
+				>
+					Choose files
+					<input
+						id="file-uploads"
+						type="file"
+						accept=".md,.txt"
+						hidden={true}
+						multiple
+						onChange={onReceiveFileInput}
+					/>
+				</label>
 			</form>
+			{uploadedFileContents.size > 0 && (
+				<div className="px-4">
+					Chosen files:
+					<ul className="list-disc">
+						{[...uploadedFileContents.entries()].map(
+							([fileName, _]) => (
+								<li key={fileName}>
+									{fileName.length <= 20
+										? fileName
+										: fileName.substring(0, 16) +
+										  "..." +
+										  fileName.split(".")[
+												fileName.split(".").length - 1
+										  ]}
+								</li>
+							)
+						)}
+					</ul>
+				</div>
+			)}
 		</div>
 	);
 }
